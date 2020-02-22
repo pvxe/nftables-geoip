@@ -147,7 +147,7 @@ def check_ipv4(addr):
         return False
 
 
-def make_geoip_dict(country_alpha_dict):
+def make_geoip_dict(country_alpha_dict, ipv):
     """
     Read DB-IP network ranges and creates geoip4 and geoip6 dictionaries
     mapping ip ranges over country alpha-2 codes
@@ -159,10 +159,11 @@ def make_geoip_dict(country_alpha_dict):
     #      Kosovo,XK,XKX,999,ISO 3166-2:XK,Europe,"","","","",""
     #
     #      Or instead use geonames.
-    geoip4_dict = {}
-    geoip6_dict = {}
+    geoip_dict = {}
 
     known_alphas = country_alpha_dict.values()
+
+    args.blocks.seek(0)
 
     for net_entry in map(NetworkEntry._make, csv.reader(args.blocks)):
 
@@ -179,12 +180,14 @@ def make_geoip_dict(country_alpha_dict):
         else:
             k = '-'.join((net_entry.network_first, net_entry.network_last))
 
-        if check_ipv4(net_entry.network_first):
-            geoip4_dict[k] = alpha2
+        if ipv == 'ipv4':
+            if check_ipv4(net_entry.network_first):
+                geoip_dict[k] = alpha2
         else:
-            geoip6_dict[k] = alpha2
+            if not check_ipv4(net_entry.network_first):
+                geoip_dict[k] = alpha2
 
-    return format_dict(geoip4_dict), format_dict(geoip6_dict)
+    return format_dict(geoip_dict)
 
 
 def make_lines1(dictionary):
@@ -305,6 +308,7 @@ if __name__ == '__main__':
     print('Writing country definition files...')
     write_geoip_location(country_dict, continent_dict, country_alpha_dict)
     print('Writing nftables maps (geoip-ipv{4,6}.nft)...')
-    geoip4_dict, geoip6_dict = make_geoip_dict(country_alpha_dict)
+    geoip4_dict = make_geoip_dict(country_alpha_dict, 'ipv4')
+    geoip6_dict = make_geoip_dict(country_alpha_dict, 'ipv6')
     write_geoips(geoip4_dict, geoip6_dict)
     print('Done!')
