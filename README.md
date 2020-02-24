@@ -1,6 +1,6 @@
 # Nftables geoip script
 
-Python script that generates .nft files with mappings betwween IP addresses
+Python script that generates .nft files with mappings between IP addresses
 and its geolocation, so you can include them inside your rules.
 
 # Requirements
@@ -70,3 +70,11 @@ nft shell.__
 So, although maps are defined, country definitions do not persist.
 You will need to define those geoip rules inside your ruleset definition
 files. Like in the example above.
+
+__You will need ~300MB of free memory to run the script and also to load
+the full (all) ipv4 and ipv6 maps.__
+
+It's been reported that low memory machines, (eg. GCP f1-micro) are not
+enough and the scripts ends up killed by the OOM-killer.
+
+This will be fixed in [#1](https://github.com/JMGuisadoG/nftables-geoip/issues/1).
