@@ -48,19 +48,42 @@ Giving the following output
 
 ## Example: Counting incoming Spanish traffic
 
+Create file /etc/geoip.nft
 ```
-  table filter {
-    include "./geoip-def-all.nft"
-    include "./geoip-ipv4.nft"
-    include "./geoip-ipv6.nft"
+  #!/usr/sbin/nft -f
+
+  table geoip {
+    include "geoip-def-all.nft" # fill absolute path
+    include "geoip-ipv4.nft" # fill absolute path
+    include "geoip-ipv6.nft" # fill absolute path
 
     chain input {
-                  type filter hook input priority filter; policy accept;
+                  type filter hook input priority 0; policy accept;
                   meta mark set ip saddr map @geoip4
                   meta mark $ES counter
           }
   }
 ```
+And then, run ```nft -f /etc/geoip.nft``` to add this rule in firewall.
+
+You can also make rule permanent by editing file /etc/nftables.conf
+```
+  #!/usr/sbin/nft -f
+
+  flush ruleset
+
+  include "/etc/geoip.nft" # insert this line
+  
+  ...
+```
+This file is executed when start of nftables.
+
+After update geoip files, you can reload geoip table by running command:
+```
+  nft delete table geoip
+  nft -f /etc/geoip.nft
+```
+This will not impact some tools like fail2ban.
 
 # Caveats
 
