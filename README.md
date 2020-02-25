@@ -48,18 +48,42 @@ Giving the following output
 
 ## Example: Counting incoming Spanish traffic
 
+Create a file, `geoip.nft` (it will be at `/etc/geoip.nft` for this example).
 ```
-  table filter {
-    include "./geoip-def-all.nft"
-    include "./geoip-ipv4.nft"
-    include "./geoip-ipv6.nft"
+  #!/usr/sbin/nft -f
+
+  table geoip {
+    include "geoip-def-all.nft"
+    include "geoip-ipv4.nft"
+    include "geoip-ipv6.nft"
 
     chain input {
-                  type filter hook input priority filter; policy accept;
+                  type filter hook input priority 0; policy accept;
                   meta mark set ip saddr map @geoip4
                   meta mark $ES counter
-          }
+    }
   }
+```
+Then  run ```nft -f /etc/geoip.nft``` to add it to your firewall.
+
+You can also make the new table, chain and rules permanent by editing your distro specific file
+(/etc/nftables.conf for Arch Linux or Debian) by including `geoip.nft`. This file is usually run at boot.
+```
+  #!/usr/sbin/nft -f
+
+  flush ruleset
+  include "/etc/geoip.nft"
+
+  # your ruleset...
+
+  ...
+```
+
+When updating the geoip maps (`geoip-ipv4` and/or `geoip-ipv6`), you will need to
+reload `/etc/geoip.nft` so new geoip maps are included again and old ones dropped:
+```
+  nft delete table geoip
+  nft -f /etc/geoip.nft
 ```
 
 # Caveats
