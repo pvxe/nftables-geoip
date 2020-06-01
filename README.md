@@ -52,7 +52,7 @@ Create a file, `geoip.nft` (it will be at `/etc/geoip.nft` for this example).
 ```
   #!/usr/sbin/nft -f
 
-  table geoip {
+  table inet geoip {
     include "geoip-def-all.nft"
     include "geoip-ipv4.nft"
     include "geoip-ipv6.nft"
@@ -60,10 +60,13 @@ Create a file, `geoip.nft` (it will be at `/etc/geoip.nft` for this example).
     chain input {
                   type filter hook input priority 0; policy accept;
                   meta mark set ip saddr map @geoip4
+                  meta mark set ip6 saddr map @geoip6
                   meta mark $ES counter
     }
   }
 ```
+__NOTE:__ If you plan on using both ipv4 and ipv6 sets you need to use the `inet` prefix for the table type.
+
 Then  run ```nft -f /etc/geoip.nft``` to add it to your firewall.
 
 You can also make the new table, chain and rules permanent by editing your distro specific file
