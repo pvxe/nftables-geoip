@@ -7,6 +7,12 @@
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
 
+"""
+Generate files containing nftables geoip mappings and definitions.
+
+This script is intended to be executed and not imported.
+"""
+
 from collections import namedtuple
 from datetime import datetime
 
