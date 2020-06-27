@@ -74,31 +74,20 @@ def make_location_dicts():
     next(args.locations)  # Omit license notice
     next(args.locations)  # Omit csv header
     for geo_entry in map(GeoEntry._make, csv.reader(args.locations)):
-        country_dict[geo_entry.country_code.lstrip('0')] = geo_entry.name
-        continent_dict[geo_entry.name] = geo_entry.region
-        country_alpha_dict[geo_entry.name] = geo_entry.alpha_2
-    return format_dict(country_dict), \
-           format_dict(continent_dict), \
-           format_dict(country_alpha_dict)
+        country_name = normalize(geo_entry.name)
+        country_dict[normalize(geo_entry.country_code.lstrip('0'))] = country_name
+        continent_dict[country_name] = normalize(geo_entry.region)
+        country_alpha_dict[country_name] = normalize(geo_entry.alpha_2)
+    return country_dict, continent_dict, country_alpha_dict
 
 
-def format_dict(dictionary):
+def normalize(value):
     """
-    Strip accents and replace special characters for keys and values
-    inside a dictionary
-    """
-    new_dict = {}
-    for key, value in dictionary.items():
-        if key != '' and value != '':
-            new_key = strip_accent(key).lower()
-            new_key = new_key.replace(' ', '_').replace('[', '').replace(']', '').replace(',', '')
-            new_value = strip_accent(value).lower()
-            new_value = new_value.replace(' ', '_').replace('[', '').replace(']', '').replace(',','')
-            new_dict[new_key] = new_value
-        else:
-            sys.exit('BUG: There is an empty string as key or value inside a dictionary')
+    Strip accents and replace special characters.
 
-    return new_dict
+    Used for keys and values inside location dictionaries.
+    """
+    return strip_accent(value).lower().replace(' ', '_').replace('[', '').replace(']', '').replace(',', '')
 
 
 def write_geoip_location(country_dict, continent_dict, country_alpha_dict):
@@ -176,9 +165,9 @@ def make_geoip_dict(country_alpha_dict):
 
     for net_entry in map(NetworkEntry._make, csv.reader(args.blocks)):
 
-        alpha2 = net_entry.country_alpha_2
+        alpha2 = net_entry.country_alpha_2.lower()
         # 'ZZ' or codes not appearing in location.csv will be ignored
-        if (alpha2 == 'ZZ') or (alpha2.lower() not in known_alphas):
+        if (alpha2 == 'zz') or (alpha2 not in known_alphas):
             continue
 
         # There are entries in DB-IP csv for single addresses which
@@ -194,7 +183,7 @@ def make_geoip_dict(country_alpha_dict):
         else:
             geoip6_dict[k] = alpha2
 
-    return format_dict(geoip4_dict), format_dict(geoip6_dict)
+    return geoip4_dict, geoip6_dict
 
 
 def make_lines1(dictionary):
