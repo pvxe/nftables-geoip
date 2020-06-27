@@ -15,24 +15,24 @@ To generate ipv4 and ipv6 mappings, download geoip data from db-ip.com
 saving the output in the current folder
 
 ```
-   ./nft_geoip.py --file-location location.csv --download
+./nft_geoip.py --file-location location.csv --download
 ```
 
 Giving the following output
 
 ```
-  drwxr-xr-x 2 foobar foobar 4,0K ene  4 19:38 .
-  drwxr-xr-x 5 foobar foobar 4,0K ene  4 19:38 ..
-  -rw-r--r-- 1 foobar foobar  22M ene  4 19:38 dbip.csv
-  -rw-r--r-- 1 foobar foobar  956 ene  4 19:38 geoip-def-africa.nft
-  -rw-r--r-- 1 foobar foobar 8,3K ene  4 19:38 geoip-def-all.nft
-  -rw-r--r-- 1 foobar foobar  902 ene  4 19:38 geoip-def-americas.nft
-  -rw-r--r-- 1 foobar foobar   15 ene  4 19:38 geoip-def-antarctica.nft
-  -rw-r--r-- 1 foobar foobar  808 ene  4 19:38 geoip-def-asia.nft
-  -rw-r--r-- 1 foobar foobar  810 ene  4 19:38 geoip-def-europe.nft
-  -rw-r--r-- 1 foobar foobar  461 ene  4 19:38 geoip-def-oceania.nft
-  -rw-r--r-- 1 foobar foobar 8,8M ene  4 19:38 geoip-ipv4.nft
-  -rw-r--r-- 1 foobar foobar  16M ene  4 19:38 geoip-ipv6.nft
+drwxr-xr-x 2 foobar foobar 4,0K ene  4 19:38 .
+drwxr-xr-x 5 foobar foobar 4,0K ene  4 19:38 ..
+-rw-r--r-- 1 foobar foobar  22M ene  4 19:38 dbip.csv
+-rw-r--r-- 1 foobar foobar  956 ene  4 19:38 geoip-def-africa.nft
+-rw-r--r-- 1 foobar foobar 8,3K ene  4 19:38 geoip-def-all.nft
+-rw-r--r-- 1 foobar foobar  902 ene  4 19:38 geoip-def-americas.nft
+-rw-r--r-- 1 foobar foobar   15 ene  4 19:38 geoip-def-antarctica.nft
+-rw-r--r-- 1 foobar foobar  808 ene  4 19:38 geoip-def-asia.nft
+-rw-r--r-- 1 foobar foobar  810 ene  4 19:38 geoip-def-europe.nft
+-rw-r--r-- 1 foobar foobar  461 ene  4 19:38 geoip-def-oceania.nft
+-rw-r--r-- 1 foobar foobar 8,8M ene  4 19:38 geoip-ipv4.nft
+-rw-r--r-- 1 foobar foobar  16M ene  4 19:38 geoip-ipv6.nft
 ```
 
 * geoip-def-all defines variables for each country (2-char iso name)
@@ -42,28 +42,60 @@ Giving the following output
 
 ## Marking packets to its corresponding country
 
+Most importantly, using the maps you mark ipv4 and ipv6 packets with
+
 ```
-  meta mark set ip saddr map @geoip4
+meta mark set ip saddr map @geoip4
+meta mark set ip saddr map @geoip6
+```
+
+You can mark output and input packets adding a chain with the
+lowest priority among all of other chains in your table.
+
+### Marking output packets by destination
+```
+chain geoip-mark-output {
+	type filter hook output priority -1; policy accept;
+
+	meta mark set ip daddr map @geoip4
+	meta mark set ip daddr map @geoip6
+}
+```
+
+### Marking input packet by origin
+```
+chain geoip-mark-input {
+	type filter hook input priority -1; policy accept;
+
+	meta mark set ip saddr map @geoip4
+	meta mark set ip saddr map @geoip6
+}
 ```
 
 ## Example: Counting incoming Spanish traffic
 
 Create a file, `geoip.nft` (it will be at `/etc/geoip.nft` for this example).
 ```
-  #!/usr/sbin/nft -f
+#!/usr/sbin/nft -f
 
-  table inet geoip {
-    include "geoip-def-all.nft"
-    include "geoip-ipv4.nft"
-    include "geoip-ipv6.nft"
+table inet geoip {
+	include "geoip-def-all.nft"
+	include "geoip-ipv4.nft"
+	include "geoip-ipv6.nft"
 
-    chain input {
-                  type filter hook input priority 0; policy accept;
-                  meta mark set ip saddr map @geoip4
-                  meta mark set ip6 saddr map @geoip6
-                  meta mark $ES counter
-    }
-  }
+	chain geoip-mark-input {
+		type filter hook input priority -1; policy accept;
+
+		meta mark set ip saddr map @geoip4
+		meta mark set ip saddr map @geoip6
+	}
+
+	chain input {
+		type filter hook input priority 0; policy accept;
+
+		meta mark $ES counter
+	}
+}
 ```
 __NOTE:__ If you plan on using both ipv4 and ipv6 sets you need to use the `inet` prefix for the table type.
 
@@ -72,21 +104,21 @@ Then  run ```nft -f /etc/geoip.nft``` to add it to your firewall.
 You can also make the new table, chain and rules permanent by editing your distro specific file
 (/etc/nftables.conf for Arch Linux or Debian) by including `geoip.nft`. This file is usually run at boot.
 ```
-  #!/usr/sbin/nft -f
+#!/usr/sbin/nft -f
 
-  flush ruleset
-  include "/etc/geoip.nft"
+flush ruleset
+include "/etc/geoip.nft"
 
-  # your ruleset...
+# your ruleset...
 
-  ...
+...
 ```
 
 When updating the geoip maps (`geoip-ipv4` and/or `geoip-ipv6`), you will need to
 reload `/etc/geoip.nft` so new geoip maps are included again and old ones dropped:
 ```
-  nft delete table geoip
-  nft -f /etc/geoip.nft
+nft delete table geoip
+nft -f /etc/geoip.nft
 ```
 
 # Caveats
