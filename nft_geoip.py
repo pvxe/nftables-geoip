@@ -61,7 +61,7 @@ def strip_accent(text):
                    if unicodedata.category(char) != 'Mn')
 
 
-def make_country_and_continent_dict():
+def make_location_dicts():
     """
     Returns three formatted dictionaries with following key/value:
         - iso_3166_2 (numeric)  :   country name
@@ -220,7 +220,8 @@ def write_nft_header(f):
             .format(datetime.now().strftime("%a %b %d %H:%M %Y")))
     f.write("# IP Geolocation by DB-IP (https://db-ip.com) licensed under CC-BY-SA 4.0\n\n")
 
-def write_geoips(geoip4_dict, geoip6_dict):
+
+def write_geoip_maps(geoip4_dict, geoip6_dict):
     """
     Write ipv4 and ipv6 geoip nftables maps to corresponding output files.
     """
@@ -276,6 +277,8 @@ if __name__ == '__main__':
                         dest='dir')
     args = parser.parse_args()
 
+    country_dict, continent_dict, country_alpha_dict = make_location_dicts()
+
     if not args.dir:
         args.dir = ''
     elif not os.path.isdir(args.dir):
@@ -315,10 +318,9 @@ if __name__ == '__main__':
         parser.print_help()
         sys.exit('Missing country information csv file')
 
-    country_dict, continent_dict, country_alpha_dict = make_country_and_continent_dict()
     print('Writing country definition files...')
     write_geoip_location(country_dict, continent_dict, country_alpha_dict)
     print('Writing nftables maps (geoip-ipv{4,6}.nft)...')
     geoip4_dict, geoip6_dict = make_geoip_dict(country_alpha_dict)
-    write_geoips(geoip4_dict, geoip6_dict)
+    write_geoip_maps(geoip4_dict, geoip6_dict)
     print('Done!')
