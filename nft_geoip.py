@@ -28,6 +28,10 @@ import time
 import unicodedata
 
 
+DEFAULT_FILE_LOCATION = 'location.csv'
+DEFAULT_FILE_ADDRESS = 'dbip.csv'
+
+
 # entries in location csv
 GeoEntry = namedtuple('GeoEntry',
                       'name, '
@@ -249,12 +253,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Creates nftables geoip definitions and maps.')
     parser.add_argument('--file-location',
                         type=argparse.FileType('r'),
-                        help='path to csv file containing information about countries',
-                        required=True,
+                        help='path to csv file containing information about countries. '
+                            f'(default: {DEFAULT_FILE_LOCATION})',
+                        default=DEFAULT_FILE_LOCATION,
+                        required=False,
                         dest='locations')
     parser.add_argument('--file-address',
                         type=argparse.FileType('r'),
-                        help='path to db-ip.com lite cvs file with ipv4 and ipv6 geoip information',
+                        help='path to db-ip.com lite cvs file with ipv4 and ipv6 geoip information '
+                            f'(default: {DEFAULT_FILE_ADDRESS})',
+                        default=DEFAULT_FILE_ADDRESS,
                         required=False,
                         dest='blocks')
     parser.add_argument('-d', '--download', action='store_true',
