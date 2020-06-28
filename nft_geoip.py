@@ -258,7 +258,6 @@ def create_parser():
                         type=argparse.FileType('r'),
                         help='path to db-ip.com lite cvs file with ipv4 and ipv6 geoip information '
                             f'(default: {DEFAULT_FILE_ADDRESS})',
-                        default=DEFAULT_FILE_ADDRESS,
                         required=False,
                         dest='blocks')
     parser.add_argument('-d', '--download', action='store_true',
@@ -277,7 +276,6 @@ if __name__ == '__main__':
     parser = create_parser()
     args = parser.parse_args()
 
-    country_dict, continent_dict, country_alpha_dict = make_location_dicts()
 
     if not args.dir:
         args.dir = ''
@@ -318,6 +316,7 @@ if __name__ == '__main__':
         parser.print_help()
         sys.exit('Missing country information csv file')
 
+    country_dict, continent_dict, country_alpha_dict = make_location_dicts()
     print('Writing country definition files...')
     write_geoip_location(country_dict, continent_dict, country_alpha_dict)
     print('Writing nftables maps (geoip-ipv{4,6}.nft)...')
