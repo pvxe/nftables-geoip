@@ -134,6 +134,7 @@ def write_geoip_location(country_dict, continent_dict, country_alpha_dict):
         output_file.write('\t}\n')
         output_file.write('}\n')
 
+
 def check_ipv4(addr):
     """
     Returns true if a string is representing an ipv4 address.
@@ -201,6 +202,7 @@ def make_lines2(dictionary):
     """
     return ['${} : ${}'.format(k, v) for k, v in dictionary.items()]
 
+
 def write_nft_header(f):
     """
     Writes nft comments about generation date and db-ip copyright notice.
@@ -239,8 +241,12 @@ def write_geoip_maps(geoip4_dict, geoip6_dict):
         output_file.write('}\n')
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Creates nftables geoip definitions and maps.')
+def create_parser():
+    """
+    Returns cli argument parser
+    """
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     prog='nft_geoip')
     parser.add_argument('--file-location',
                         type=argparse.FileType('r'),
                         help='path to csv file containing information about countries. '
@@ -260,10 +266,15 @@ if __name__ == '__main__':
                         required=False,
                         dest='download')
     parser.add_argument('-o', '--output-dir',
-                        help='Existing directory where downloads and output will be saved. \
-                              If not specified, working directory',
+                        help='Existing directory where downloads and output will be saved. '
+                             '(default: working directory)',
                         required=False,
                         dest='dir')
+    return parser
+
+
+if __name__ == '__main__':
+    parser = create_parser()
     args = parser.parse_args()
 
     country_dict, continent_dict, country_alpha_dict = make_location_dicts()
