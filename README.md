@@ -58,7 +58,7 @@ chain geoip-mark-output {
 	type filter hook output priority -1; policy accept;
 
 	meta mark set ip daddr map @geoip4
-	meta mark set ip daddr map @geoip6
+	meta mark set ip6 daddr map @geoip6
 }
 ```
 
@@ -87,7 +87,7 @@ table inet geoip {
 		type filter hook input priority -1; policy accept;
 
 		meta mark set ip saddr map @geoip4
-		meta mark set ip saddr map @geoip6
+		meta mark set ip6 saddr map @geoip6
 	}
 
 	chain input {

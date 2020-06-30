@@ -1,0 +1,25 @@
+#!/usr/sbin/nft -f
+
+# Accounting of incoming Spanish traffic, ipv4 and ipv6
+
+flush ruleset
+
+table inet filter {
+
+	include "geoip-def-all.nft"
+	include "geoip-ipv4.nft"
+	include "geoip-ipv6.nft"
+
+	chain geoip-mark-input {
+		type filter hook input priority -1; policy accept;
+
+		meta mark set ip saddr map @geoip4
+		meta mark set ip6 saddr map @geoip6
+	}
+
+	chain input {
+		type filter hook input priority filter; policy accept;
+
+		mark $ES counter comment "incoming-ES"
+	} 
+}
