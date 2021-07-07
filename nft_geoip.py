@@ -27,10 +27,8 @@ import sys
 import time
 import unicodedata
 
-
 DEFAULT_FILE_LOCATION = 'location.csv'
 DEFAULT_FILE_ADDRESS = 'dbip.csv'
-
 
 # entries in location csv
 GeoEntry = namedtuple('GeoEntry',
@@ -164,6 +162,9 @@ def make_geoip_dict(country_alpha_dict):
 
     known_alphas = country_alpha_dict.values()
 
+    # Reset file object position to start of the address file
+    args.blocks.seek(0)
+
     for net_entry in map(NetworkEntry._make, csv.reader(args.blocks)):
 
         alpha2 = net_entry.country_alpha_2.lower()
@@ -212,11 +213,13 @@ def write_nft_header(f):
     f.write("# IP Geolocation by DB-IP (https://db-ip.com) licensed under CC-BY-SA 4.0\n\n")
 
 
-def write_geoip_maps(geoip4_dict, geoip6_dict):
+def write_geoip_maps(geoip4_dict, geoip6_dict, interesting=False):
     """
     Write ipv4 and ipv6 geoip nftables maps to corresponding output files.
     """
-    with open(args.dir+'geoip-ipv4.nft', 'w') as output_file:
+    ipv4_file = 'geoip-ipv4-interesting.nft' if interesting else 'geoip-ipv4.nft'
+    ipv6_file = 'geoip-ipv6-interesting.nft' if interesting else 'geoip-ipv6.nft'
+    with open(args.dir+ipv4_file, 'w') as output_file:
         write_nft_header(output_file)
         output_file.write('map geoip4 {\n'
                           '\ttype ipv4_addr : mark\n'
@@ -228,7 +231,7 @@ def write_geoip_maps(geoip4_dict, geoip6_dict):
         output_file.write('\t}\n')
         output_file.write('}\n')
 
-    with open(args.dir+'geoip-ipv6.nft', 'w') as output_file:
+    with open(args.dir+ipv6_file, 'w') as output_file:
         write_nft_header(output_file)
         output_file.write('map geoip6 {\n'
                           '\ttype ipv6_addr : mark\n'
@@ -269,6 +272,14 @@ def create_parser():
                              '(default: working directory)',
                         required=False,
                         dest='dir')
+    parser.add_argument('-c', '--country-filter,',
+                        help='Comma-separated list of countries to create a filtered nft map (e.g. us,ca,gb). '
+                              'Accepts full name or abbrevation (see --show-countries)',
+                        required=False,
+                        dest='countries')
+    parser.add_argument('--show-countries', action='store_true',
+                        help='Show a list of countries to be provided to --country-filter.',
+                        required=False)
     return parser
 
 
@@ -317,9 +328,28 @@ if __name__ == '__main__':
         sys.exit('Missing country information csv file')
 
     country_dict, continent_dict, country_alpha_dict = make_location_dicts()
+
+    if args.show_countries:
+        for k, v in country_alpha_dict.items():
+            print("Country: {} ({})".format(k,v))
+        sys.exit(0)
+
     print('Writing country definition files...')
     write_geoip_location(country_dict, continent_dict, country_alpha_dict)
     print('Writing nftables maps (geoip-ipv{4,6}.nft)...')
     geoip4_dict, geoip6_dict = make_geoip_dict(country_alpha_dict)
     write_geoip_maps(geoip4_dict, geoip6_dict)
+
+    # Write separate map of countries if list provided
+    if (args.countries):
+        countries = list(map(str.lower,args.countries.split(',')))
+        interesting_countries = {k: v for k, v in country_alpha_dict.items() if k in countries or v in countries}
+        if len(interesting_countries) > 0:
+            print('Found countries: ', interesting_countries)
+            print('Writing interesting countries file...')
+            interesting_countries_ipv4, interesting_countries_ipv6  = make_geoip_dict(interesting_countries)
+            write_geoip_maps(interesting_countries_ipv4, interesting_countries_ipv6, True)
+        else:
+            print('Skipping interesting countries output, no matching countries found')
+
     print('Done!')
