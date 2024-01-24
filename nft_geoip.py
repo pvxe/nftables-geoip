@@ -270,6 +270,7 @@ def create_parser():
     parser.add_argument('-o', '--output-dir',
                         help='Existing directory where downloads and output will be saved. '
                              '(default: working directory)',
+                        default='./',
                         required=False,
                         dest='dir')
     parser.add_argument('-c', '--country-filter,',
@@ -287,10 +288,7 @@ if __name__ == '__main__':
     parser = create_parser()
     args = parser.parse_args()
 
-
-    if not args.dir:
-        args.dir = ''
-    elif not os.path.isdir(args.dir):
+    if not os.path.isdir(args.dir):
         parser.print_help()
         sys.exit('\nSpecified output directory does not exist or is not a directory')
     else:
