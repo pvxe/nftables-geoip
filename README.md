@@ -3,11 +3,15 @@
 Python script that generates .nft files with mappings between IP addresses
 and its geolocation, so you can include them inside your rules.
 
+
 # Requirements
+
+Minimum python version: **3.9**
 
 Package used that are not present in the Python Standard Library
 
 - `requests`
+
 
 # Usage example
 
@@ -39,6 +43,28 @@ drwxr-xr-x 5 foobar foobar 4,0K ene  4 19:38 ..
   in location.csv assigning its iso numeric value (eg. Canada, `define $CA = 124`)
 * geoip-ipv4.nft defines geoip4 map (@geoip4)
 * geoip-ipv6.nft defines geoip6 map (@geoip6)
+
+## Creating a country filtered subset for `geoip-*.nft` files
+
+If you don't want the whole geoip map (including all countries) you can filter
+by country using the `-c/--country-filter` parameter. This parameter enables
+the creation of the additional files:
+
+- geoip-ipv4-interesting.nft
+- geoip-ipv6-interesting.nft
+
+These files will contain nft maps with addresses related to the specified
+countries only.
+
+For example, to generate a Spanish, French and Portuguese only subset:
+
+```
+./nft_geoip.py --download -c es,fr,pt
+...
+Found countries:  {'france': 'fr', 'spain': 'es'}
+Writing interesting countries file...
+Done!
+```
 
 ## Marking packets to its corresponding country
 
@@ -120,6 +146,48 @@ reload `/etc/geoip.nft` so new geoip maps are included again and old ones droppe
 nft delete table geoip
 nft -f /etc/geoip.nft
 ```
+
+## Example: Counting incoming Spanish traffic (using smaller geoip map files)
+
+Use the `-c/--country-filter` parameter to generate the additional files:
+
+- `geoip-ipv4-interesting.nft`
+- `geoip-ipv6-interesting.nft`
+
+For this example the command might look like this (assuming dbip.csv is not
+present):
+
+```
+$ ./nft_geoip --download -c es
+```
+
+Create a file, `geoip.nft` (it will be at `/etc/geoip.nft` for this example)
+and use the "interesting" files not the whole geoip maps.
+```
+#!/usr/sbin/nft -f
+
+table inet geoip {
+	include "geoip-def-all.nft"
+	include "geoip-ipv4-interesting.nft"
+	include "geoip-ipv6-interesting.nft"
+
+	chain geoip-mark-input {
+		type filter hook input priority -1; policy accept;
+
+		meta mark set ip saddr map @geoip4
+		meta mark set ip6 saddr map @geoip6
+	}
+
+	chain input {
+		type filter hook input priority 0; policy accept;
+
+		meta mark $ES counter
+	}
+}
+```
+__NOTE:__ You can replace `geoip-def-all.nft` by `geoip-def-europe.nft`, or
+just copy the "define ES = ..." line into your nft file.
+
 
 # Caveats
 
