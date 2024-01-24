@@ -51,6 +51,32 @@ NetworkEntry = namedtuple('NetworkEntry',
                           'country_alpha_2')
 
 
+class DownloadAction(argparse.BooleanOptionalAction):
+    """
+    Custom BooleanOptionalAction to download db-ip csv in case the user
+    specified so.
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        super().__call__(parser, namespace, values, option_string=option_string)
+        if namespace.download:
+            filename = namespace.dir+'dbip.csv.gz'
+            url = 'https://download.db-ip.com/free/dbip-country-lite-{}.csv.gz'.format(time.strftime("%Y-%m"))
+            print('Downloading db-ip.com geoip csv file...')
+            r = requests.get(url, stream=True)
+            if r.status_code == 200:
+                with open(filename, 'wb') as f:
+                    r.raw.decode_content = True
+                    shutil.copyfileobj(r.raw, f)
+            else:
+                sys.exit('Error trying to download DB-IP lite geoip csv file. Bailing out...')
+
+            with gzip.open(filename, 'rb') as f_in:
+                with open(namespace.dir+'dbip.csv', 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+                    os.remove(filename)
+            # Update blocks arg with the downloaded file
+            setattr(namespace, 'blocks', open(namespace.dir+'dbip.csv', 'r', encoding='utf-8'))
+
 def strip_accent(text):
     """
     Remove accented characters. Convert to ASCII.
@@ -263,10 +289,10 @@ def create_parser():
                             f'(default: {DEFAULT_FILE_ADDRESS})',
                         required=False,
                         dest='blocks')
-    parser.add_argument('-d', '--download', action='store_true',
-                        help='fetch geoip data from db-ip.com. This option overrides --file-address',
-                        required=False,
-                        dest='download')
+    parser.add_argument('-d', '--download', action=DownloadAction,
+                        help='Fetch geoip data from db-ip.com. Overrides --file-address.',
+                        default=False,
+                        required=False)
     parser.add_argument('-o', '--output-dir',
                         help='Existing directory where downloads and output will be saved. '
                              '(default: working directory)',
@@ -294,26 +320,6 @@ if __name__ == '__main__':
     else:
         # Add trailing / for folder path if there isn't
         args.dir += '/' if args.dir[-1:] != '/' else ''
-
-    if args.download:
-        filename = args.dir+'dbip.csv.gz'
-        url = 'https://download.db-ip.com/free/dbip-country-lite-{}.csv.gz'.format(time.strftime("%Y-%m"))
-        print('Downloading db-ip.com geoip csv file...')
-        r = requests.get(url, stream=True)
-        if r.status_code == 200:
-            with open(filename, 'wb') as f:
-                r.raw.decode_content = True
-                shutil.copyfileobj(r.raw, f)
-        else:
-            sys.exit('Error trying to download DB-IP lite geoip csv file. Bailing out...')
-
-        with gzip.open(filename, 'rb') as f_in:
-            with open(args.dir+'dbip.csv', 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
-                os.remove(filename)
-
-        # Update blocks arg with the downloaded file
-        args.blocks = open(args.dir+'dbip.csv', 'r', encoding='utf-8')
 
     if not (args.blocks or args.locations):
         parser.print_help()
