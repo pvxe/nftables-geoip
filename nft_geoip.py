@@ -50,6 +50,7 @@ NetworkEntry = namedtuple('NetworkEntry',
                           'network_last, '
                           'country_alpha_2')
 
+DBIP_URL = 'https://download.db-ip.com/free/dbip-country-lite-{}.csv.gz'
 
 class DownloadAction(argparse.BooleanOptionalAction):
     """
@@ -62,16 +63,28 @@ class DownloadAction(argparse.BooleanOptionalAction):
             # Add trailing / for folder path if there is none
             namespace.dir += '/' if namespace.dir[-1:] != '/' else ''
             filename = namespace.dir+'dbip.csv.gz'
-            url = 'https://download.db-ip.com/free/dbip-country-lite-{}.csv.gz'.format(time.strftime("%Y-%m"))
-            print('Downloading db-ip.com geoip csv file...')
+            current_date = datetime.now().replace(day=1)
+            current_month_str = current_date.strftime("%Y-%m")
+            url = DBIP_URL.format(current_month_str)
+            print('Downloading db-ip.com geoip csv file for {}...'.format(current_month_str))
             r = requests.get(url, stream=True)
-            if r.status_code == 200:
-                with open(filename, 'wb') as f:
-                    r.raw.decode_content = True
-                    shutil.copyfileobj(r.raw, f)
-            else:
-                sys.exit('Error trying to download DB-IP lite geoip csv file. Bailing out...')
 
+            # If current month fails, try previous month. If unsuccessful, then bail out.
+            if r.status_code != 200:
+                print('Warning: Current month dataset ({}) not available yet.'.format(current_month_str))
+                print('Falling back to previous month dataset...')
+                prev_date = current_date - timedelta(days=1)
+                prev_month_str = prev_date.strftime("%Y-%m")
+                url = DBIP_URL.format(prev_month_str)
+                print('Downloading db-ip.com geoip csv file for {}...'.format(prev_month_str))
+                r = requests.get(url, stream=True)
+                if r.status_code != 200:
+                    parser.exit(status=1, message='Error re-trying DB-IP lite geoip csv download. Bailing out...')
+
+            # Download and extract the file
+            with open(filename, 'wb') as f:
+                r.raw.decode_content = True
+                shutil.copyfileobj(r.raw, f)
             with gzip.open(filename, 'rb') as f_in:
                 with open(namespace.dir+'dbip.csv', 'wb') as f_out:
                     shutil.copyfileobj(f_in, f_out)
