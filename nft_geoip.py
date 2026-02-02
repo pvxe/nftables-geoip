@@ -59,6 +59,8 @@ class DownloadAction(argparse.BooleanOptionalAction):
     def __call__(self, parser, namespace, values, option_string=None):
         super().__call__(parser, namespace, values, option_string=option_string)
         if namespace.download:
+            # Add trailing / for folder path if there is none
+            namespace.dir += '/' if namespace.dir[-1:] != '/' else ''
             filename = namespace.dir+'dbip.csv.gz'
             url = 'https://download.db-ip.com/free/dbip-country-lite-{}.csv.gz'.format(time.strftime("%Y-%m"))
             print('Downloading db-ip.com geoip csv file...')
